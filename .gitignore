@@ -1,4 +1,6 @@
+# --------------------
 # Logs
+# --------------------
 logs
 *.log
 npm-debug.log*
@@ -7,20 +9,59 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# --------------------
+# Node / React (frontend)
+# --------------------
+node_modules/
+dist/
+dist-ssr/
 *.local
+/frontend/build/
+/frontend/.env
+/frontend/.eslintcache
+/frontend/coverage/
 
-# Editor directories and files
+# --------------------
+# Editor / IDE
+# --------------------
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# --------------------
+# Python / ragSystem
+# --------------------
+/ragSystem/__pycache__/
+/ragSystem/*.py[cod]
+/ragSystem/*.pyo
+/ragSystem/.Python
+/ragSystem/venv/
+/ragSystem/.venv/
+/ragSystem/env/
+/ragSystem/.env/
+/ragSystem/*.egg-info/
+/ragSystem/dist/
+/ragSystem/build/
+/ragSystem/.pytest_cache/
+/ragSystem/.mypy_cache/
+
+# --------------------
+# Go / backend
+# --------------------
+/backend/bin/
+/backend/*.exe
+/backend/*.exe~
+/backend/*.dll
+/backend/*.so
+/backend/*.dylib
+/backend/build/
+/backend/pkg/
+/backend/vendor/
 
 .venv
