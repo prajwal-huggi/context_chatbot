@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"os"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/prajwal-huggi/context_chatbot/internal/utils/response"
@@ -133,6 +136,70 @@ func ResetRAG()http.HandlerFunc{
 	}
 }
 
-// func UploadDocument()http.HandlerFunc{
+func UploadDocument() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		slog.Info("Uploading document to RAG system")
 
-// }
+		// 1. Parse multipart form
+		err := r.ParseMultipartForm(10 << 20) // 10MB
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			return
+		}
+
+		// 2. Extract uploaded file
+		file, handler, err := r.FormFile("file")
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			return
+		}
+		defer file.Close()
+
+		// 3. Build a new multipart form
+		var buf bytes.Buffer
+		writer := multipart.NewWriter(&buf)
+
+		// 4. Preserve original headers (including Content-Type)
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition",
+			fmt.Sprintf(`form-data; name="%s"; filename="%s"`, "file", handler.Filename))
+		h.Set("Content-Type", handler.Header.Get("Content-Type"))
+
+		part, err := writer.CreatePart(h)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+			return
+		}
+
+		// 5. Copy file contents into new multipart
+		if _, err := io.Copy(part, file); err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+			return
+		}
+
+		// 6. Close writer to finalize body
+		writer.Close()
+
+		// 7. Send request to RAG backend
+		ragBackendURL := os.Getenv("RAG_BACKEND_URL") + "/add_pdf"
+		req, err := http.NewRequest("POST", ragBackendURL, &buf)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+			return
+		}
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+
+		client := &http.Client{Timeout: 60 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			response.WriteJson(w, http.StatusBadGateway, response.GeneralError(err))
+			return
+		}
+		defer resp.Body.Close()
+
+		// 8. Relay backend response
+		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+		w.WriteHeader(resp.StatusCode)
+		io.Copy(w, resp.Body)
+	}
+}

@@ -37,7 +37,7 @@ func main(){
 		response.WriteJson(w, http.StatusOK, map[string]string {"message":"Hello GoLang"})
 	})
 	router.HandleFunc("POST /api/reset", rag.ResetRAG())
-	// router.HandleFunc("POST /api/document", rag.UploadDocument())
+	router.HandleFunc("POST /api/document", rag.UploadDocument())
 	router.HandleFunc("POST /api/answer", rag.GetAnswer())
 
 	// 4) Setup the server
