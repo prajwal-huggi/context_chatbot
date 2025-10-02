@@ -64,5 +64,6 @@ dist-ssr/
 /backend/build/
 /backend/pkg/
 /backend/vendor/
+/backend/.env
 
 .venv

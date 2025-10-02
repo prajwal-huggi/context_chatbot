@@ -11,12 +11,20 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/prajwal-huggi/context_chatbot/internal/config"
+	"github.com/prajwal-huggi/context_chatbot/internal/http/handlers/rag"
 	"github.com/prajwal-huggi/context_chatbot/internal/utils/response"
 )
 
 func main(){
-	fmt.Println("RUnning the go")
+	fmt.Println("Running the go")
+
+	err := godotenv.Load(".env") // or backend/.env depending on your structure
+	if err != nil {
+		log.Println("No .env file found, falling back to system env")
+	}
+
 	// 1) Load config
 	cfg:= config.MustLoad()
 
@@ -28,6 +36,9 @@ func main(){
 	router.HandleFunc("GET /api/", func(w http.ResponseWriter, r *http.Request){
 		response.WriteJson(w, http.StatusOK, map[string]string {"message":"Hello GoLang"})
 	})
+	// router.HandleFunc("POST /api/reset", rag.ResetRAG())
+	// router.HandleFunc("POST /api/document", rag.UploadDocument())
+	router.HandleFunc("POST /api/answer", rag.GetAnswer())
 
 	// 4) Setup the server
 	server:= http.Server{
@@ -56,7 +67,7 @@ func main(){
 	ctx, cancel:=context.WithTimeout(context.Background(), 5* time.Second)
 	defer cancel()
 
-	err:= server.Shutdown(ctx)
+	err= server.Shutdown(ctx)
 	if err!= nil{
 		slog.Error("Failed to shutdown server", slog.String("error", err.Error()))
 	}
