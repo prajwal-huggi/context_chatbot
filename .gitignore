@@ -44,7 +44,7 @@ dist-ssr/
 /ragSystem/venv/
 /ragSystem/.venv/
 /ragSystem/env/
-/ragSystem/.env/
+/ragSystem/.env
 /ragSystem/*.egg-info/
 /ragSystem/dist/
 /ragSystem/build/
@@ -55,6 +55,7 @@ dist-ssr/
 # Go / backend
 # --------------------
 /backend/bin/
+/backend/config/
 /backend/*.exe
 /backend/*.exe~
 /backend/*.dll
@@ -63,5 +64,6 @@ dist-ssr/
 /backend/build/
 /backend/pkg/
 /backend/vendor/
+/backend/.env
 
 .venv
