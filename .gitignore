@@ -44,7 +44,7 @@ dist-ssr/
 /ragSystem/venv/
 /ragSystem/.venv/
 /ragSystem/env/
-/ragSystem/.env/
+/ragSystem/.env
 /ragSystem/*.egg-info/
 /ragSystem/dist/
 /ragSystem/build/
