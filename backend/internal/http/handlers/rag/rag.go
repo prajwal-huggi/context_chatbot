@@ -97,9 +97,41 @@ func GetAnswer()http.HandlerFunc{
 	}
 }
 
-// func ResetRAG()http.HandlerFunc{
+func ResetRAG()http.HandlerFunc{
+	return func(w http.ResponseWriter, r *http.Request){
+		slog.Info("Sending the request to the RAG system to reset the database")
 
-// }
+		// 1. Build RAG backend URL
+		ragBackendURL:= os.Getenv("RAG_BACKEND_URL")+"/reset"
+
+		// 2. Make the request to the RAG backend
+		resp, err:= http.Post(ragBackendURL, "application/json", nil)
+		if err!= nil{
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+			return 
+		}
+		defer resp.Body.Close()
+
+		// 3. Read backend response
+		body, err:= io.ReadAll(resp.Body)
+		if err!= nil{
+			slog.Error("failed to read backend response", "error", err)
+            response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+            return
+		}
+
+		// 4. Forward response header and status
+		for k, v:= range resp.Header{
+			w.Header()[k]= v
+		}
+		w.WriteHeader(resp.StatusCode)
+
+		if _, err:= w.Write(body); err!= nil{
+			slog.Error("failed to write resopnse", "error", err)
+		}
+
+	}
+}
 
 // func UploadDocument()http.HandlerFunc{
 

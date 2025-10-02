@@ -36,7 +36,7 @@ func main(){
 	router.HandleFunc("GET /api/", func(w http.ResponseWriter, r *http.Request){
 		response.WriteJson(w, http.StatusOK, map[string]string {"message":"Hello GoLang"})
 	})
-	// router.HandleFunc("POST /api/reset", rag.ResetRAG())
+	router.HandleFunc("POST /api/reset", rag.ResetRAG())
 	// router.HandleFunc("POST /api/document", rag.UploadDocument())
 	router.HandleFunc("POST /api/answer", rag.GetAnswer())
 
