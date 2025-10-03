@@ -21,7 +21,7 @@ jobs:
       - run: npm install
       - run: npm run build
       - run: npm test --if-present
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
           path: frontend/dist
@@ -40,7 +40,7 @@ jobs:
       - run: go mod tidy
       - run: go test ./... || echo "No tests found"
       - run: go build -o app .
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: backend-app
           path: backend/app
@@ -59,7 +59,7 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements.txt
       - run: pytest || echo "No tests"
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: ragSystem-app
           path: ragSystem/
