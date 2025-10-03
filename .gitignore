@@ -12,10 +12,19 @@ lerna-debug.log*
 # --------------------
 # Node / React (frontend)
 # --------------------
-node_modules/
-dist/
-dist-ssr/
-*.local
+/frontend/logs
+/frontend/*.log
+/frontend/npm-debug.log*
+/frontend/yarn-debug.log*
+/frontend/yarn-error.log*
+/frontend/pnpm-debug.log*
+/frontend/lerna-debug.log*
+
+/frontend/node_modules
+/frontend/dist
+/frontend/dist-ssr
+/frontend/*.local
+
 /frontend/build/
 /frontend/.env
 /frontend/.eslintcache
@@ -50,6 +59,7 @@ dist-ssr/
 /ragSystem/build/
 /ragSystem/.pytest_cache/
 /ragSystem/.mypy_cache/
+/ragSystem/pdfDB
 
 # --------------------
 # Go / backend
