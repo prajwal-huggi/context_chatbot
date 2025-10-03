@@ -14,6 +14,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/prajwal-huggi/context_chatbot/internal/config"
 	"github.com/prajwal-huggi/context_chatbot/internal/http/handlers/rag"
+	"github.com/prajwal-huggi/context_chatbot/internal/http/middleware"
 	"github.com/prajwal-huggi/context_chatbot/internal/utils/response"
 )
 
@@ -43,7 +44,7 @@ func main(){
 	// 4) Setup the server
 	server:= http.Server{
 		Addr: cfg.Addr,
-		Handler: router,
+		Handler: middleware.CORS(router),
 	}
 
 	slog.Info("Server started successfully: ", slog.String("address", cfg.Addr))
