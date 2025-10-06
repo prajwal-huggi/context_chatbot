@@ -1,5 +1,22 @@
 package main
 
+import (
+	"context"
+	"fmt"
+	"log"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/joho/godotenv"
+	"github.com/prajwal-huggi/context_chatbot/internal/config"
+	"github.com/prajwal-huggi/context_chatbot/internal/http/handlers/rag"
+	"github.com/prajwal-huggi/context_chatbot/internal/utils/response"
+)
+
 func main(){
 	fmt.Println("Running the go")
 
