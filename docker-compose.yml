@@ -7,8 +7,27 @@ services:
       - ./backend/.env
     volumes:
       - ./backend/storage:/app/storage
+    depends_on:
+      - ragsystem
 
     # OR use environment directly:
     # environment:
     #   - DATABASE_URL=${DATABASE_URL}
     #   - API_KEY=${API_KEY}
+
+  ragsystem:
+    build: ./ragSystem
+    ports:
+      - "8081:8081"
+    env_file:
+      - ./ragSystem/.env
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"      # host 5173 → container 5173
+    volumes:
+      - ./frontend:/app   # live reload / HMR
+      - /app/node_modules # prevent overwriting node_modules
+    depends_on:
+      - backend

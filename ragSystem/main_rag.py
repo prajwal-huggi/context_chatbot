@@ -101,6 +101,11 @@ parallel_chain= RunnableParallel({
 
 final_chain= parallel_chain | prompt | llm | parser
 
+@app.get('/')
+async def greetings():
+    print("Welcome to ragSystem")
+    return {"message":"Welcome to ragSystem"}
+
 # Fast API endpoints
 @app.post('/add_pdf')
 async def add_pdf(file: UploadFile= File(...)):
