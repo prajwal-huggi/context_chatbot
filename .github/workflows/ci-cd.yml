@@ -1,10 +1,18 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: ["main"]
+  # Run on all pull requests targeting main
   pull_request:
     branches: ["main"]
+
+  # Optional: also run on direct pushes (like merges)
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
 
 jobs:
     # ---- Frontend (React + Vite) ----
@@ -14,17 +22,17 @@ jobs:
       run:
         working-directory: ./frontend
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - run: npm install
+      - run: npm ci
       - run: npm run build
       - run: npm test --if-present
       - uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
-          path: frontend/dist
+          path: dist
 
   # ---- Backend (Go) ----
   backend:
@@ -33,8 +41,8 @@ jobs:
       run:
         working-directory: ./backend
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.21'
       - run: go mod tidy
@@ -43,7 +51,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: backend-app
-          path: backend/app
+          path: app
 
   # ---- GenAI Service (FastAPI + LangChain) ----
   ragSystem:
@@ -52,8 +60,8 @@ jobs:
       run:
         working-directory: ./ragSystem
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
@@ -62,7 +70,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ragSystem-app
-          path: ragSystem/
+          path: .
 
 # ---- Deploy (optional: Docker + server) ----
 #   deploy:
