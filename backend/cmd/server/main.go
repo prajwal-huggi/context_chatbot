@@ -1,6 +1,5 @@
 package main
 
-
 func main(){
 	fmt.Println("Running the go")
 
