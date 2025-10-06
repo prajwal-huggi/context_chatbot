@@ -1,4 +1,4 @@
-Go Backend Setup
+# Go lang
 to initialize the go: go mod init github.com/prajwal-huggi/backend_go
 from the link(go lang clean)-> https://github.com/ilyakaznacheev/cleanenv
 
@@ -18,7 +18,6 @@ go get github.com/mattn/go-sqlite3
 github.com/joho/godotenv
 The above github is used to load the .env file in the go project.(Usage is present in the backend/cmd/server/main.go)
 
-FRONTEND
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -35,3 +34,35 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+# Dockerise
+docker build -t <dockerhub-username> <image-name>:<tag>
+
+docker push <dockerhub-username>/<image-name>:<tag>
+
+docker run -p <host-port>:<container-port> <image-name>:<tag>
+
+docker buildx create --use 
+
+**The below command is used to check the image locally**
+docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    -t <dockerhub-username>/<image-name>:<tag>\
+    --load \
+    .
+**The below command is used to create image using buildx for multiplatform**
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t prajwal2434/backendgo:v1 \
+  --push \
+  .
+
+
+**The below command is used to push the image on the dockerhub**
+docker buildx build --platform linux/amd64,linux/arm64 --push -t <dockerhub-username>/<image-name>:<tag>  .
+
+**The below command if for renaming the image-name**
+docker tag <old-image-name>:<new-tag> <new-image-name>:<new-tag>
+
+docker-compose up --build
+After running the above command there is no need of running the docerfile commands
