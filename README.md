@@ -66,3 +66,11 @@ docker tag <old-image-name>:<new-tag> <new-image-name>:<new-tag>
 
 docker-compose up --build
 After running the above command there is no need of running the docerfile commands
+### For the restarting the docker-compose
+docker-compose down
+docker-compose build --no-cache
+docker-compose up
+
+# Python(RAG+ Fast API)
+running the flask code by the following command
+uvicorn nameOfFile:app --reload
