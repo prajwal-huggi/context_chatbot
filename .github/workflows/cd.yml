@@ -23,7 +23,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # full history for version comparison
+          fetch-depth: 0
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -48,38 +48,21 @@ jobs:
         run: |
           git fetch origin main
 
-          # FRONTEND
-          LHS_FRONTEND=$(git show origin/main:frontend/Dockerfile 2>/dev/null | grep 'ARG VERSION' | cut -d '=' -f2 || echo "")
-          RHS_FRONTEND=$(grep 'ARG VERSION' frontend/Dockerfile | cut -d '=' -f2 || echo "")
-          echo "LHS_FRONTEND=$LHS_FRONTEND" >> $GITHUB_ENV
-          echo "RHS_FRONTEND=$RHS_FRONTEND" >> $GITHUB_ENV
-          if [[ "$LHS_FRONTEND" == "$RHS_FRONTEND" && "$LHS_FRONTEND" != "" ]]; then
-            echo "FRONTEND_CHANGED=false" >> $GITHUB_ENV
-          else
-            echo "FRONTEND_CHANGED=true" >> $GITHUB_ENV
-          fi
+          detect_version() {
+            LHS=$(git show origin/main:$1 2>/dev/null | grep 'ARG VERSION' | cut -d '=' -f2 || echo "")
+            RHS=$(grep 'ARG VERSION' $1 2>/dev/null | cut -d '=' -f2 || echo "")
+            echo "LHS_$2=$LHS" >> $GITHUB_ENV
+            echo "RHS_$2=$RHS" >> $GITHUB_ENV
+            if [[ "$LHS" == "$RHS" && "$LHS" != "" ]]; then
+              echo "$2_CHANGED=false" >> $GITHUB_ENV
+            else
+              echo "$2_CHANGED=true" >> $GITHUB_ENV
+            fi
+          }
 
-          # BACKEND
-          LHS_BACKEND=$(git show origin/main:backend/Dockerfile 2>/dev/null | grep 'ARG VERSION' | cut -d '=' -f2 || echo "")
-          RHS_BACKEND=$(grep 'ARG VERSION' backend/Dockerfile | cut -d '=' -f2 || echo "")
-          echo "LHS_BACKEND=$LHS_BACKEND" >> $GITHUB_ENV
-          echo "RHS_BACKEND=$RHS_BACKEND" >> $GITHUB_ENV
-          if [[ "$LHS_BACKEND" == "$RHS_BACKEND" && "$LHS_BACKEND" != "" ]]; then
-            echo "BACKEND_CHANGED=false" >> $GITHUB_ENV
-          else
-            echo "BACKEND_CHANGED=true" >> $GITHUB_ENV
-          fi
-
-          # RAG SYSTEM
-          LHS_RAG=$(git show origin/main:ragSystem/Dockerfile 2>/dev/null | grep 'ARG VERSION' | cut -d '=' -f2 || echo "")
-          RHS_RAG=$(grep 'ARG VERSION' ragSystem/Dockerfile | cut -d '=' -f2 || echo "")
-          echo "LHS_RAG=$LHS_RAG" >> $GITHUB_ENV
-          echo "RHS_RAG=$RHS_RAG" >> $GITHUB_ENV
-          if [[ "$LHS_RAG" == "$RHS_RAG" && "$LHS_RAG" != "" ]]; then
-            echo "RAG_CHANGED=false" >> $GITHUB_ENV
-          else
-            echo "RAG_CHANGED=true" >> $GITHUB_ENV
-          fi
+          detect_version "frontend/Dockerfile" FRONTEND
+          detect_version "backend/Dockerfile" BACKEND
+          detect_version "ragSystem/Dockerfile" RAG
 
       # ---- Build & Push Frontend ----
       - name: Build & Push Frontend
@@ -87,7 +70,7 @@ jobs:
         run: |
           VERSION=${RHS_FRONTEND:-frontend-v1}
           echo "Building frontend image version: $VERSION"
-          docker buildx create --use --name mybuilder || true
+          docker buildx use mybuilder || docker buildx create --use --name mybuilder
           docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./frontend --push
           echo "FRONTEND_VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -97,7 +80,7 @@ jobs:
         run: |
           VERSION=${RHS_BACKEND:-backend-v1}
           echo "Building backend image version: $VERSION"
-          docker buildx create --use --name mybuilder || true
+          docker buildx use mybuilder || docker buildx create --use --name mybuilder
           docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./backend --push
           echo "BACKEND_VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -107,7 +90,7 @@ jobs:
         run: |
           VERSION=${RHS_RAG:-ragsystem-v1}
           echo "Building RAG System image version: $VERSION"
-          docker buildx create --use --name mybuilder || true
+          docker buildx use mybuilder || docker buildx create --use --name mybuilder
           docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./ragsystem --push
           echo "RAG_VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -119,7 +102,6 @@ jobs:
           BACKEND_IMG=${BACKEND_VERSION:-backend-v1}
           RAG_IMG=${RAG_VERSION:-ragsystem-v1}
 
-          # Update by container name
           jq --arg fe "$ECR_BASE:$FRONTEND_IMG" \
              --arg be "$ECR_BASE:$BACKEND_IMG" \
              --arg rag "$ECR_BASE:$RAG_IMG" \
