@@ -4,7 +4,7 @@ FROM python:3.12-slim
 # Set working directory inside the container
 WORKDIR /app
 
-ARG VERSION=ragsystem-v4
+ARG VERSION=ragsystem-v5
 
 # Copy requirements first for caching
 COPY ./requirementsPython.txt ./
