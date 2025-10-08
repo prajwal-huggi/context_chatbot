@@ -57,6 +57,10 @@ docker buildx build \
   --push \
   .
 
+docker buildx build --platform linux/amd64 \
+  -t 175790960921.dkr.ecr.eu-north-1.amazonaws.com/prajwal2434/context_chatbot:frotnend-v1 \
+  . --push
+The above command is used to push the image in the aws ecr but before that we have to login in to the ecr with the help of the aws cli.
 
 **The below command is used to push the image on the dockerhub**
 docker buildx build --platform linux/amd64,linux/arm64 --push -t dockerhub-username/image-name:tag  .

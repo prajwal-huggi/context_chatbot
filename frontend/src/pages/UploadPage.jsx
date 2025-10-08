@@ -24,8 +24,9 @@ function UploadPage() {
     formData.append("file", file);
 
     try {
+      const endpoint= `http://${window.location.hostname}:8080`
       const response = await axios.post(
-        `${import.meta.env.VITE_GO_BACKEND_URL}/api/document`,
+        `${endpoint}/api/document`,
         formData,
         {
           headers: {

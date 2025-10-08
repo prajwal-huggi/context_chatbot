@@ -6,7 +6,8 @@ function ChatPage() {
   const [chatHistory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const backendUrl = import.meta.env.VITE_GO_BACKEND_URL; // Ensure this is in your .env
+const backendUrl = `http://${window.location.hostname}:8080`;
+ //import.meta.env.VITE_GO_BACKEND_URL; // Ensure this is in your .env
 
   // Handle sending a question
   const handleSend = async () => {
