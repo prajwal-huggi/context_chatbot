@@ -104,7 +104,7 @@ final_chain= parallel_chain | prompt | llm | parser
 @app.get('/')
 async def greetings():
     print("Welcome to ragSystem")
-    return {"message":"Welcome to ragSystem. CD is implemented successfully. Maja nahi aa rha. version 7"}
+    return {"message":"Welcome to ragSystem. CD is implemented successfully. Maja nahi aa rha. version 8"}
 
 # Fast API endpoints
 @app.post('/add_pdf')
