@@ -1,0 +1,124 @@
+name: CD to ECS Fargate (Smart)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: eu-north-1
+      ECR_BASE: 175790960921.dkr.ecr.eu-north-1.amazonaws.com/prajwal2434/context_chatbot
+      ECS_CLUSTER: context-chatbot-cluster
+      ECS_SERVICE: context-chatbot-service
+      ECS_TASK_DEF: context-chatbot-task
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_BASE
+
+      - name: Fetch existing ECS task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition $ECS_TASK_DEF \
+            --region $AWS_REGION \
+            --query "taskDefinition" > ecs-task.json
+
+      - name: Detect Dockerfile versions
+        id: detect_versions
+        run: |
+          git fetch origin main
+
+          detect_version() {
+            LHS=$(git show origin/main:$1 2>/dev/null | grep 'ARG VERSION' | cut -d '=' -f2 || echo "")
+            RHS=$(grep 'ARG VERSION' $1 2>/dev/null | cut -d '=' -f2 || echo "")
+            echo "LHS_$2=$LHS" >> $GITHUB_ENV
+            echo "RHS_$2=$RHS" >> $GITHUB_ENV
+            if [[ "$LHS" == "$RHS" && "$LHS" != "" ]]; then
+              echo "$2_CHANGED=false" >> $GITHUB_ENV
+            else
+              echo "$2_CHANGED=true" >> $GITHUB_ENV
+            fi
+          }
+
+          detect_version "frontend/Dockerfile" FRONTEND
+          detect_version "backend/Dockerfile" BACKEND
+          detect_version "ragSystem/Dockerfile" RAG
+
+      # ---- Build & Push Frontend ----
+      - name: Build & Push Frontend
+        if: env.FRONTEND_CHANGED == 'true'
+        run: |
+          VERSION=${RHS_FRONTEND:-frontend-v1}
+          echo "Building frontend image version: $VERSION"
+          docker buildx use mybuilder || docker buildx create --use --name mybuilder
+          docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./frontend --push
+          echo "FRONTEND_VERSION=$VERSION" >> $GITHUB_ENV
+
+      # ---- Build & Push Backend ----
+      - name: Build & Push Backend
+        if: env.BACKEND_CHANGED == 'true'
+        run: |
+          VERSION=${RHS_BACKEND:-backend-v1}
+          echo "Building backend image version: $VERSION"
+          docker buildx use mybuilder || docker buildx create --use --name mybuilder
+          docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./backend --push
+          echo "BACKEND_VERSION=$VERSION" >> $GITHUB_ENV
+
+      # ---- Build & Push RAG System ----
+      - name: Build & Push RAG System
+        if: env.RAG_CHANGED == 'true'
+        run: |
+          VERSION=${RHS_RAG:-ragsystem-v1}
+          echo "Building RAG System image version: $VERSION"
+          docker buildx use mybuilder || docker buildx create --use --name mybuilder
+          docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./ragSystem --push
+          echo "RAG_VERSION=$VERSION" >> $GITHUB_ENV
+
+      # ---- Update ECS Task Definition ----
+      - name: Update ECS Task Definition
+        if: env.FRONTEND_CHANGED == 'true' || env.BACKEND_CHANGED == 'true' || env.RAG_CHANGED == 'true'
+        run: |
+          FRONTEND_IMG=${FRONTEND_VERSION:-frontend-v1}
+          BACKEND_IMG=${BACKEND_VERSION:-backend-v1}
+          RAG_IMG=${RAG_VERSION:-ragsystem-v1}
+
+          jq --arg fe "$ECR_BASE:$FRONTEND_IMG" \
+             --arg be "$ECR_BASE:$BACKEND_IMG" \
+             --arg rag "$ECR_BASE:$RAG_IMG" \
+             '.containerDefinitions |= map(
+               if .name=="frontend" then .image=$fe
+               elif .name=="backend" then .image=$be
+               elif .name=="ragsystem" then .image=$rag
+               else . end
+             )' \
+             ecs-task.json > ecs-task-updated.json
+
+      # ---- Deploy ECS Task ----
+      - name: Deploy ECS Task
+        if: env.FRONTEND_CHANGED == 'true' || env.BACKEND_CHANGED == 'true' || env.RAG_CHANGED == 'true'
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ecs-task-updated.json
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
