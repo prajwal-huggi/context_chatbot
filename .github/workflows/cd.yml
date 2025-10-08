@@ -124,9 +124,9 @@ jobs:
           RAG_IMG=${{ steps.build_rag.outputs.rag_digest }}
 
           # Fallback to current task definition if image not rebuilt
-          FRONTEND_IMG=${FRONTEND_IMG:-$(jq -r '.containerDefinitions[] | select(.name=="frontend").image' ecs-task.json)}
-          BACKEND_IMG=${BACKEND_IMG:-$(jq -r '.containerDefinitions[] | select(.name=="backend").image' ecs-task.json)}
-          RAG_IMG=${RAG_IMG:-$(jq -r '.containerDefinitions[] | select(.name=="ragsystem").image' ecs-task.json)}
+          FRONTEND_IMG=${FRONTEND_IMG:-$(jq -r '.containerDefinitions[] | select(.name=="context-app-frontend-container").image' ecs-task.json)}
+          BACKEND_IMG=${BACKEND_IMG:-$(jq -r '.containerDefinitions[] | select(.name=="context-app-backend-container").image' ecs-task.json)}
+          RAG_IMG=${RAG_IMG:-$(jq -r '.containerDefinitions[] | select(.name=="context-app-ragSystem-container").image' ecs-task.json)}
 
           echo "FRONTEND_IMG=$FRONTEND_IMG" >> $GITHUB_ENV
           echo "BACKEND_IMG=$BACKEND_IMG" >> $GITHUB_ENV
