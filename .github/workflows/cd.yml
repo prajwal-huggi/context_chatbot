@@ -91,7 +91,7 @@ jobs:
           VERSION=${RHS_RAG:-ragsystem-v1}
           echo "Building RAG System image version: $VERSION"
           docker buildx use mybuilder || docker buildx create --use --name mybuilder
-          docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./ragsystem --push
+          docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./ragSystem --push
           echo "RAG_VERSION=$VERSION" >> $GITHUB_ENV
 
       # ---- Update ECS Task Definition ----
