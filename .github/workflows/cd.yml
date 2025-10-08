@@ -49,27 +49,33 @@ jobs:
           git fetch origin main
 
           detect_version() {
-            LHS=$(git show origin/main:$1 2>/dev/null | grep 'ARG VERSION' | cut -d '=' -f2 || echo "")
-            RHS=$(grep 'ARG VERSION' $1 2>/dev/null | cut -d '=' -f2 || echo "")
-            echo "LHS_$2=$LHS" >> $GITHUB_ENV
-            echo "RHS_$2=$RHS" >> $GITHUB_ENV
+            FILE=$1
+            NAME=$2
+            LHS=$(git show origin/main:$FILE 2>/dev/null | grep 'ARG VERSION' | cut -d '=' -f2 || echo "")
+            RHS=$(grep 'ARG VERSION' $FILE 2>/dev/null | cut -d '=' -f2 || echo "")
+            echo "$NAME"_LHS="$LHS" >> $GITHUB_ENV
+            echo "$NAME"_RHS="$RHS" >> $GITHUB_ENV
             if [[ "$LHS" == "$RHS" && "$LHS" != "" ]]; then
-              echo "$2_CHANGED=false"
+              echo "$NAME"_CHANGED=false
             else
-              echo "$2_CHANGED=true"
+              echo "$NAME"_CHANGED=true
             fi
           }
 
-          echo "frontend_changed=$(detect_version frontend/Dockerfile FRONTEND)" >> $GITHUB_OUTPUT
-          echo "backend_changed=$(detect_version backend/Dockerfile BACKEND)" >> $GITHUB_OUTPUT
-          echo "rag_changed=$(detect_version ragSystem/Dockerfile RAG)" >> $GITHUB_OUTPUT
+          FRONTEND_CHANGED=$(detect_version frontend/Dockerfile FRONTEND; echo $FRONTEND_CHANGED)
+          BACKEND_CHANGED=$(detect_version backend/Dockerfile BACKEND; echo $BACKEND_CHANGED)
+          RAG_CHANGED=$(detect_version ragSystem/Dockerfile RAG; echo $RAG_CHANGED)
+
+          echo "frontend_changed=$FRONTEND_CHANGED" >> $GITHUB_OUTPUT
+          echo "backend_changed=$BACKEND_CHANGED" >> $GITHUB_OUTPUT
+          echo "rag_changed=$RAG_CHANGED" >> $GITHUB_OUTPUT
 
       # ---- Build & Push Frontend ----
       - name: Build & Push Frontend
         id: build_frontend
         if: steps.detect_versions.outputs.frontend_changed == 'true'
         run: |
-          VERSION=${RHS_FRONTEND:-frontend-v1}
+          VERSION=${FRONTEND_RHS:-frontend-v1}
           docker buildx use mybuilder || docker buildx create --use --name mybuilder
           docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./frontend --push
           
@@ -84,7 +90,7 @@ jobs:
         id: build_backend
         if: steps.detect_versions.outputs.backend_changed == 'true'
         run: |
-          VERSION=${RHS_BACKEND:-backend-v1}
+          VERSION=${BACKEND_RHS:-backend-v1}
           docker buildx use mybuilder || docker buildx create --use --name mybuilder
           docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./backend --push
           
@@ -99,7 +105,7 @@ jobs:
         id: build_rag
         if: steps.detect_versions.outputs.rag_changed == 'true'
         run: |
-          VERSION=${RHS_RAG:-ragsystem-v1}
+          VERSION=${RAG_RHS:-ragsystem-v1}
           docker buildx use mybuilder || docker buildx create --use --name mybuilder
           docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./ragSystem --push
           
@@ -109,14 +115,26 @@ jobs:
                     --query 'imageDetails[0].imageDigest' --output text)
           echo "rag_digest=$ECR_BASE@$DIGEST" >> $GITHUB_OUTPUT
 
-      # ---- Update ECS Task Definition ----
-      - name: Update ECS Task Definition
-        if: steps.detect_versions.outputs.frontend_changed == 'true' || steps.detect_versions.outputs.backend_changed == 'true' || steps.detect_versions.outputs.rag_changed == 'true'
+      # ---- Set ECS image variables (fallback to existing task if not rebuilt) ----
+      - name: Set ECS images
+        id: set_images
         run: |
           FRONTEND_IMG=${{ steps.build_frontend.outputs.frontend_digest }}
           BACKEND_IMG=${{ steps.build_backend.outputs.backend_digest }}
           RAG_IMG=${{ steps.build_rag.outputs.rag_digest }}
 
+          # Fallback to current task definition if image not rebuilt
+          FRONTEND_IMG=${FRONTEND_IMG:-$(jq -r '.containerDefinitions[] | select(.name=="frontend").image' ecs-task.json)}
+          BACKEND_IMG=${BACKEND_IMG:-$(jq -r '.containerDefinitions[] | select(.name=="backend").image' ecs-task.json)}
+          RAG_IMG=${RAG_IMG:-$(jq -r '.containerDefinitions[] | select(.name=="ragsystem").image' ecs-task.json)}
+
+          echo "FRONTEND_IMG=$FRONTEND_IMG" >> $GITHUB_ENV
+          echo "BACKEND_IMG=$BACKEND_IMG" >> $GITHUB_ENV
+          echo "RAG_IMG=$RAG_IMG" >> $GITHUB_ENV
+
+      # ---- Update ECS Task Definition ----
+      - name: Update ECS Task Definition
+        run: |
           jq --arg fe "$FRONTEND_IMG" \
              --arg be "$BACKEND_IMG" \
              --arg rag "$RAG_IMG" \
@@ -129,7 +147,6 @@ jobs:
 
       # ---- Deploy ECS Task ----
       - name: Deploy ECS Task
-        if: steps.detect_versions.outputs.frontend_changed == 'true' || steps.detect_versions.outputs.backend_changed == 'true' || steps.detect_versions.outputs.rag_changed == 'true'
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ecs-task-updated.json
