@@ -35,7 +35,7 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-ARG VERSION=frontend-v5
+ARG VERSION=frontend-v6
 
 # Copy package.json and lock file
 COPY package*.json ./

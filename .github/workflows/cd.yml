@@ -67,9 +67,8 @@ jobs:
 
       # ---- Build & Push Frontend ----
       - name: Build & Push Frontend
-        if: env.FRONTEND_CHANGED == 'true'
         run: |
-          VERSION=${RHS_FRONTEND:-frontend-v1}
+          VERSION=${RHS_FRONTEND:-frontend-v5}
           echo "Building frontend image version: $VERSION"
           docker buildx use mybuilder || docker buildx create --use --name mybuilder
           docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./frontend --push
@@ -77,9 +76,8 @@ jobs:
 
       # ---- Build & Push Backend ----
       - name: Build & Push Backend
-        if: env.BACKEND_CHANGED == 'true'
         run: |
-          VERSION=${RHS_BACKEND:-backend-v1}
+          VERSION=${RHS_BACKEND:-backend-v2}
           echo "Building backend image version: $VERSION"
           docker buildx use mybuilder || docker buildx create --use --name mybuilder
           docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./backend --push
@@ -87,9 +85,8 @@ jobs:
 
       # ---- Build & Push RAG System ----
       - name: Build & Push RAG System
-        if: env.RAG_CHANGED == 'true'
         run: |
-          VERSION=${RHS_RAG:-ragsystem-v1}
+          VERSION=${RHS_RAG:-ragsystem-v7}
           echo "Building RAG System image version: $VERSION"
           docker buildx use mybuilder || docker buildx create --use --name mybuilder
           docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./ragSystem --push
@@ -97,11 +94,10 @@ jobs:
 
       # ---- Update ECS Task Definition ----
       - name: Update ECS Task Definition
-        if: env.FRONTEND_CHANGED == 'true' || env.BACKEND_CHANGED == 'true' || env.RAG_CHANGED == 'true'
         run: |
-          FRONTEND_IMG=${FRONTEND_VERSION:-frontend-v1}
-          BACKEND_IMG=${BACKEND_VERSION:-backend-v1}
-          RAG_IMG=${RAG_VERSION:-ragsystem-v1}
+          FRONTEND_IMG=${FRONTEND_VERSION:-frontend-v5}
+          BACKEND_IMG=${BACKEND_VERSION:-backend-v2}
+          RAG_IMG=${RAG_VERSION:-ragsystem-v7}
 
           jq --arg fe "$ECR_BASE:$FRONTEND_IMG" \
              --arg be "$ECR_BASE:$BACKEND_IMG" \
@@ -116,11 +112,9 @@ jobs:
 
       # ---- Deploy ECS Task ----
       - name: Deploy ECS Task
-        if: env.FRONTEND_CHANGED == 'true' || env.BACKEND_CHANGED == 'true' || env.RAG_CHANGED == 'true'
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ecs-task-updated.json
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
-          
