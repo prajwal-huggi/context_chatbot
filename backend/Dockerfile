@@ -25,6 +25,8 @@ FROM alpine:latest
 # Set working directory
 WORKDIR /app
 
+ARG VERSION=backend-v2
+
 # Copy the compiled binary from builder stage
 COPY --from=builder /app/server .
 
