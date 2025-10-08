@@ -1,4 +1,4 @@
-name: CD to ECS Fargate (Single Task)
+name: CD to ECS Fargate (Smart)
 
 on:
   push:
@@ -15,12 +15,15 @@ jobs:
     env:
       AWS_REGION: eu-north-1
       ECR_BASE: 175790960921.dkr.ecr.eu-north-1.amazonaws.com/prajwal2434/context_chatbot
+      ECS_CLUSTER: context-chatbot-cluster
+      ECS_SERVICE: context-chatbot-service
+      ECS_TASK_DEF: context-chatbot-task
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # fetch full history to compare with main
+          fetch-depth: 0  # full history for version comparison
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -33,12 +36,19 @@ jobs:
         run: |
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_BASE
 
+      - name: Fetch existing ECS task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition $ECS_TASK_DEF \
+            --region $AWS_REGION \
+            --query "taskDefinition" > ecs-task.json
+
       - name: Detect Dockerfile versions
         id: detect_versions
         run: |
           git fetch origin main
 
-          # ----- FRONTEND -----
+          # FRONTEND
           LHS_FRONTEND=$(git show origin/main:frontend/Dockerfile 2>/dev/null | grep 'ARG VERSION' | cut -d '=' -f2 || echo "")
           RHS_FRONTEND=$(grep 'ARG VERSION' frontend/Dockerfile | cut -d '=' -f2 || echo "")
           echo "LHS_FRONTEND=$LHS_FRONTEND" >> $GITHUB_ENV
@@ -49,7 +59,7 @@ jobs:
             echo "FRONTEND_CHANGED=true" >> $GITHUB_ENV
           fi
 
-          # ----- BACKEND -----
+          # BACKEND
           LHS_BACKEND=$(git show origin/main:backend/Dockerfile 2>/dev/null | grep 'ARG VERSION' | cut -d '=' -f2 || echo "")
           RHS_BACKEND=$(grep 'ARG VERSION' backend/Dockerfile | cut -d '=' -f2 || echo "")
           echo "LHS_BACKEND=$LHS_BACKEND" >> $GITHUB_ENV
@@ -60,7 +70,7 @@ jobs:
             echo "BACKEND_CHANGED=true" >> $GITHUB_ENV
           fi
 
-          # ----- RAG SYSTEM -----
+          # RAG SYSTEM
           LHS_RAG=$(git show origin/main:ragSystem/Dockerfile 2>/dev/null | grep 'ARG VERSION' | cut -d '=' -f2 || echo "")
           RHS_RAG=$(grep 'ARG VERSION' ragSystem/Dockerfile | cut -d '=' -f2 || echo "")
           echo "LHS_RAG=$LHS_RAG" >> $GITHUB_ENV
@@ -95,10 +105,10 @@ jobs:
       - name: Build & Push RAG System
         if: env.RAG_CHANGED == 'true'
         run: |
-          VERSION=${RHS_RAG:-ragSystem-v1}
+          VERSION=${RHS_RAG:-ragsystem-v1}
           echo "Building RAG System image version: $VERSION"
           docker buildx create --use --name mybuilder || true
-          docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./ragSystem --push
+          docker buildx build --platform linux/amd64 -t $ECR_BASE:$VERSION ./ragsystem --push
           echo "RAG_VERSION=$VERSION" >> $GITHUB_ENV
 
       # ---- Update ECS Task Definition ----
@@ -107,22 +117,26 @@ jobs:
         run: |
           FRONTEND_IMG=${FRONTEND_VERSION:-frontend-v1}
           BACKEND_IMG=${BACKEND_VERSION:-backend-v1}
-          RAG_IMG=${RAG_VERSION:-ragSystem-v1}
+          RAG_IMG=${RAG_VERSION:-ragsystem-v1}
 
+          # Update by container name
           jq --arg fe "$ECR_BASE:$FRONTEND_IMG" \
              --arg be "$ECR_BASE:$BACKEND_IMG" \
              --arg rag "$ECR_BASE:$RAG_IMG" \
-             '.containerDefinitions[0].image=$fe |
-              .containerDefinitions[1].image=$be |
-              .containerDefinitions[2].image=$rag' \
+             '.containerDefinitions |= map(
+               if .name=="frontend" then .image=$fe
+               elif .name=="backend" then .image=$be
+               elif .name=="ragsystem" then .image=$rag
+               else . end
+             )' \
              ecs-task.json > ecs-task-updated.json
 
-      # ---- Deploy to ECS ----
+      # ---- Deploy ECS Task ----
       - name: Deploy ECS Task
         if: env.FRONTEND_CHANGED == 'true' || env.BACKEND_CHANGED == 'true' || env.RAG_CHANGED == 'true'
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ecs-task-updated.json
-          service: context-chatbot-service
-          cluster: your-cluster
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
